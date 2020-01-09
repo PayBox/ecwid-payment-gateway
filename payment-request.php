@@ -68,6 +68,9 @@ if (isset($_POST["data"])) {
             $strDescription .= "; ";
         }
 
+        if($order["cart"]["currency"] == "RUR")
+            $order["cart"]["currency"] = "RUB";
+
         // Request parameters to pass into payment gateway
         $request = array(
             'pg_amount'         => (int)$order['total'],
@@ -78,11 +81,11 @@ if (isset($_POST["data"])) {
             'pg_lifetime'       => 86400,
             'pg_merchant_id'    => $merchantId,
             'pg_order_id'       => $order['cart']['order']['orderNumber'],
-            'pg_result_url'     => $order['merchantAppSettings']['resultUrl'],
+            'pg_result_url'     => $order["returnUrl"],
             'pg_request_method' => 'GET',
             'pg_salt'           => rand(21, 43433),
-            'pg_success_url'    => $callbackUrl,
-            'pg_failure_url'	=> $order["returnUrl"],
+            'pg_success_url'    => $callbackUrl."&status=PAID",
+            'pg_failure_url'	=> $callbackUrl."&status=CANCELLED",
             'pg_user_phone'     => $order["cart"]["order"]["billingPerson"]["phone"],
             'pg_user_contact_email' => $order["cart"]["order"]["email"]
         );

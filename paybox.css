@@ -33,4 +33,12 @@ div#appContent {
 .edit-product-label {
     display: none;
 }
-
+.maestro-card, .amex-card{
+    margin-right: 8px;
+}
+/* Custom styles to remove a-card box shadow and border */
+.a-card {
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}

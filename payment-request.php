@@ -40,7 +40,7 @@ if (isset($_POST["data"])) {
 
   // Get payload from the POST and decrypt it
   $ecwid_payload = $_POST['data'];
-  $client_secret = "lfeKILJMFQVc3vXzW79B6TI5VKs8DFeT"; // This is a dummy value. Place your client_secret key here. You received it from Ecwid team in email when registering the app 
+  $client_secret = "LogxI79IsFenVSBydPN3bZz9ItpdcYXK"; // This is a dummy value. Place your client_secret key here. You received it from Ecwid team in email when registering the app
 
   // The resulting JSON from payment request will be in $order variable
   $order = getEcwidPayload($client_secret, $ecwid_payload);
@@ -49,8 +49,8 @@ if (isset($_POST["data"])) {
   echo "<h3>REQUEST DETAILS</h3>";
 
       // Account info from merchant app settings in app interface in Ecwid CP
-      $x_account_id = $order['merchantAppSettings']['merchantId'];
-      $api_key = $order['merchantAppSettings']['apiKey'];
+      $merchantId = $order['merchantAppSettings']['merchantId'];
+      $merchantKey = $order['merchantAppSettings']['merchantKey'];
 
       // OPTIONAL: Split name field into two fields: first name and last name
       $fullName = explode(" ", $order["cart"]["order"]["billingPerson"]["name"]);
@@ -60,76 +60,62 @@ if (isset($_POST["data"])) {
       $callbackPayload = base64_encode($order['token']);
       $callbackUrl = "https://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]"."?storeId=".$order['storeId']."&orderNumber=".$order['cart']['order']['orderNumber']."&callbackPayload=".$callbackPayload;
 
-      // Request parameters to pass into payment gateway
-      $request = array(
-        "x_account_id" => $x_account_id,
-        "x_api_key" => $api_key,
-        "x_amount" => $order["cart"]["order"]["total"],
-        "x_currency" => $order["cart"]["currency"],
-        "x_customer_billing_address1" => str_replace(PHP_EOL, ' ' , $order["cart"]["order"]["billingPerson"]["street"]),
-        "x_customer_billing_city" => $order["cart"]["order"]["billingPerson"]["city"],
-        "x_customer_billing_country" => $order["cart"]["order"]["billingPerson"]["countryCode"],
-        "x_customer_billing_state" => $order["cart"]["order"]["billingPerson"]["stateOrProvinceCode"],
-        "x_customer_billing_postcode" => $order["cart"]["order"]["billingPerson"]["postalCode"],
-        "x_customer_email" => $order["cart"]["order"]["email"],
-        "x_customer_first_name" => $firstName,
-        "x_customer_last_name" => $lastName,
-        "x_customer_phone" => $order["cart"]["order"]["billingPerson"]["phone"],
-        "x_customer_shipping_address1" => str_replace(PHP_EOL, ' ', $order["cart"]["order"]["shippingPerson"]["street"]),
-        "x_customer_shipping_city" => $order["cart"]["order"]["shippingPerson"]["city"],
-        "x_customer_shipping_country" => $order["cart"]["order"]["shippingPerson"]["countryCode"],
-        "x_customer_shipping_state" => $order["cart"]["order"]["shippingPerson"]["stateOrProvinceCode"],
-        "x_customer_shipping_postcode" => $order["cart"]["order"]["shippingPerson"]["postalCode"],
-        "x_customer_shipping_phone" => $order["cart"]["order"]["shippingPerson"]["phone"],
-        "x_description" => "Order number". $order['cart']['order']['referenceTransactionId'],
-        "x_reference" => $order['cart']['order']['referenceTransactionId'],
-        "x_url_success" => $callbackUrl."&status=PAID",
-        "x_url_error" => $callbackUrl."&status=CANCELLED",
-        "x_url_cancel" => $order["returnUrl"]
-      );
-
-        // Sign the payment request
-        $signature = payment_sign($request,$api_key);
-        $request["x_signature"] = $signature;
-
-        // Print the request variables to debug
-        echo "<br/>";
-        foreach ($request as $name => $value) {
-          echo "$name: $value<br/>";
+        $strDescription = '';
+        foreach($order['items'] as $item){
+            $strDescription .= strip_tags($item['name']);
+            if($item['quantity'] > 1)
+                $strDescription .= "*".$item['quantity'];
+            $strDescription .= "; ";
         }
-        echo "<br/>";
+
+        // Request parameters to pass into payment gateway
+        $request = array(
+            'pg_amount'         => (int)$order['total'],
+            'pg_description'    => $strDescription,
+            'pg_encoding'       => 'UTF-8',
+            'pg_currency'       => $order["cart"]["currency"],
+            'pg_user_ip'        => $_SERVER['REMOTE_ADDR'],
+            'pg_lifetime'       => 86400,
+            'pg_merchant_id'    => $merchantId,
+            'pg_order_id'       => $order['cart']['order']['orderNumber'],
+            'pg_result_url'     => $order['merchantAppSettings']['resultUrl'],
+            'pg_request_method' => 'GET',
+            'pg_salt'           => rand(21, 43433),
+            'pg_success_url'    => $callbackUrl,
+            'pg_failure_url'	=> $order["returnUrl"],
+            'pg_user_phone'     => $order["cart"]["order"]["billingPerson"]["phone"],
+            'pg_user_contact_email' => $order["cart"]["order"]["email"]
+        );
+        $request['pg_testing_mode'] = ('yes' === $order['merchantAppSettings']['testmode']) ? 1 : 0;
+
+        $url = 'payment.php';
+        ksort($request);
+        array_unshift($request, $url);
+        array_push($request, $merchantKey);
+        $str = implode(';', $request);
+        $request['pg_sig'] = md5($str);
+        unset($request[0], $request[1]);
+        $query = http_build_query($request);
+        $action = 'https://api.paybox.money/' . $url . '?' . $query;
 
         // Print form on a page to submit it from a button press
-        echo "<form action='https://example.paymentpage.com/checkout' method='post' id='payment_form'>";
+
+        echo '<form id="paybox_payment_form" action="https://api.paybox.money/payment.php" method="post">';
             foreach ($request as $name => $value) {
                 echo "<input type='hidden' name='$name' value='$value'></input>";
             }
-        echo "<input type='submit' value='Submit'>";    
+        echo "<input type='submit' value='Submit'>";
         echo "</form>";
         echo "<script>document.querySelector('#payment_form).submit();</script>";
 
 }
-
-      // Function to sign the payment request form
-      function payment_sign($query, $api_key) {
-            $clear_text = '';
-            ksort($query);
-            foreach ($query as $key => $value) {
-                if (substr($key, 0, 2) === "x_") {
-                    $clear_text .= $key . $value;
-                }
-            }
-            $hash = hash_hmac("sha256", $clear_text, $api_key);
-            return str_replace('-', '', $hash);
-      }
-
 
 // If we are returning back to storefront. Callback from payment
 
 if (isset($_GET["callbackPayload"]) && isset($_GET["status"])) {
 
     // Set variables
-    $client_id = "test-rick-payment-template";
+    $client_id = "paybox-money-dev";
     $token = base64_decode(($_GET['callbackPayload']));
     $storeId = $_GET['storeId'];
     $orderNumber = $_GET['orderNumber'];
@@ -144,7 +130,7 @@ if (isset($_GET["callbackPayload"]) && isset($_GET["status"])) {
 
     // URL used to update the order via Ecwid REST API
     $url = "https://app.ecwid.com/api/v3/$storeId/orders/transaction_$orderNumber?token=$token";
-  
+
     // Send request to update order
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -160,7 +146,7 @@ if (isset($_GET["callbackPayload"]) && isset($_GET["status"])) {
 
 }
 
-else { 
+else {
 
   header('HTTP/1.0 403 Forbidden');
   echo 'Access forbidden!';

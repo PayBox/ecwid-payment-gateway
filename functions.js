@@ -1,8 +1,8 @@
 // Initialize the application
 
 	EcwidApp.init({
-	  app_id: "test-rick-payment-template", // use your application namespace
-	  autoloadedflag: true, 
+	  app_id: "paybox-money-dev", // use your application namespace
+	  autoloadedflag: true,
 	  autoheight: true
 	});
 
@@ -10,7 +10,7 @@
 
     var storeId = storeData.store_id;
     var accessToken = storeData.access_token;
-    var language = storeData.lang;
+    var lang = storeData.lang;
     var viewMode = storeData.view_mode;
 
     if (storeData.public_token !== undefined){
@@ -20,6 +20,37 @@
     if (storeData.app_state !== undefined){
       var appState = storeData.app_state;
     }
+
+	// Interface translations
+	var ru = {
+		title: "Настройки перенаправления",
+		storeUrl: "Куда отправить пользователя?",
+		enabled: "Включить перенаправление",
+		delay: "Задержка перед перенаправлением (миллисекунды)",
+		save: "Сохранить настройки",
+		enabledCheck: "Включено",
+		enabledUnCheck: "Выключено",
+		description: "В момент завершения заказа ваши покупатели будут автоматически переходить на страницу, которую вы укажете в настройках."
+	}
+	var en = {
+		title: "Redirect Settings",
+		storeUrl: "Redirect destination URL",
+		enabled: "Enable the redirect",
+		delay: "Delay before redirect (milliseconds)",
+		save: "Save settings",
+		enabledCheck: "enabled",
+		enabledUnCheck: "disabled",
+		description: "Once enabled, your customers will be redirected to the specified destination URL after their order is placed."
+	}
+	// Load translations depending on language of Ecwid CP
+	var languagePack = [ru, en];
+	if (lang == 'ru') {
+		lang = 0;
+		document.querySelector('html').setAttribute('lang','ru');
+	} else {
+		lang = 1;
+		document.querySelector('html').setAttribute('lang','en');
+	}
 
 // Function to go to edit product label page
 
@@ -60,12 +91,12 @@ function readValuesFromPage(){
 
 		if(fieldVisibility !== undefined){
 			if(allInputs[i].tagName == "INPUT"){
-					
+
 				if(allInputs[i].type == 'checkbox' || allInputs[i].type == 'radio'){
 					applicationConfig[fieldVisibility][allInputs[i].dataset.name] = String(allInputs[i].checked) ;
 				}
 				if(allInputs[i].type == 'text' || allInputs[i].type == 'number' || allInputs[i].type == 'date') {
-					applicationConfig[fieldVisibility][allInputs[i].dataset.name] = allInputs[i].value;	
+					applicationConfig[fieldVisibility][allInputs[i].dataset.name] = allInputs[i].value;
 				}
 			}
 			if(allInputs[i].tagName == "SELECT" || allInputs[i].tagName == "TEXTAREA"){
@@ -79,7 +110,7 @@ function readValuesFromPage(){
 	return applicationConfig;
 }
 
-// Reads values from provided config and sets them for inputs on the page. 
+// Reads values from provided config and sets them for inputs on the page.
 // To fill values successfully, the input, select or textarea elements must have 'data-name' and 'data-visibility' attributes set. See appProto.html for examples
 
 function setValuesForPage(applicationConfig){
@@ -106,7 +137,7 @@ function setValuesForPage(applicationConfig){
 	var allInputs = document.querySelectorAll('input, select, textarea');
 
 	// Set values from config for input, select, textarea elements
-	
+
 	for (i=0; i<allInputs.length; i++){
 		var fieldVisibility = allInputs[i].dataset.visibility;
 
@@ -127,7 +158,7 @@ function setValuesForPage(applicationConfig){
 				checkFieldChange(allInputs[i]);
 			}
 		}
-	}	
+	}
 }
 
 // Default settings for new accounts
@@ -135,9 +166,9 @@ function setValuesForPage(applicationConfig){
 var initialConfig = {
 	private: {
 		merchantId: "",
-		APIsecret: "",
+		merchantKey: "",
 		endpointUrl: "https://secure2.authorize.net/gateway/transact.dll",
-		testMode: "true",
+		testMode: "yes",
 		installed: "yes"
 	},
 	public: {}
@@ -149,7 +180,7 @@ initialConfig.public = JSON.stringify(initialConfig.public);
 
 function createUserData() {
 
-	// Saves data for application storage 
+	// Saves data for application storage
 	EcwidApp.setAppStorage(initialConfig.private, function(value){
 		console.log('Initial private user preferences saved!');
 	});
@@ -193,8 +224,17 @@ function saveUserData() {
 }
 
 function resetUserData(initialConfig) {
-	setValuesForPage(initialConfig);
-	saveUserData();
+	//if (initialConfig.private.merchantId !== null && initialConfig.private.merchantKey !== null){
+		setValuesForPage(initialConfig);
+		saveUserData();
+	//} else {
+	//	if (initialConfig.private.merchantId == null){
+	//		document.getElementsByClassName('fieldset-merchantId').getElementsByClassName('field__error').innerHTML('PayBox requires a Merchant ID to work.').style.display = "block";
+	//	}
+	//	if (initialConfig.private.merchantKey == null){
+	//		document.getElementsByClassName('fieldset-merchantKey').getElementsByClassName('field__error').innerHTML('PayBox requires a Merchant Key to work.').style.display = "block";
+	//	}
+	//}
 }
 
 

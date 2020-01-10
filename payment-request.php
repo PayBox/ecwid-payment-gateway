@@ -40,7 +40,7 @@ if (isset($_POST["data"])) {
 
   // Get payload from the POST and decrypt it
   $ecwid_payload = $_POST['data'];
-  $client_secret = "LogxI79IsFenVSBydPN3bZz9ItpdcYXK"; // This is a dummy value. Place your client_secret key here. You received it from Ecwid team in email when registering the app
+  $client_secret = "LogxI79IsFenVSBydPN3bZz9ItpdcYXK"; // Place your client_secret key here. You received it from Ecwid team in email when registering the app
 
   // The resulting JSON from payment request will be in $order variable
   $order = getEcwidPayload($client_secret, $ecwid_payload);
@@ -103,13 +103,13 @@ if (isset($_POST["data"])) {
 
         // Print form on a page to submit it from a button press
 
-        echo '<form id="paybox_payment_form" action="https://api.paybox.money/payment.php" method="post">';
+        echo '<form id="paybox_payment_form" action="'.esc_url($action).'" method="post">';
             foreach ($request as $name => $value) {
                 echo "<input type='hidden' name='$name' value='$value'></input>";
             }
         echo "<input type='submit' value='Submit'>";
         echo "</form>";
-        echo "<script>document.querySelector('#payment_form).submit();</script>";
+        echo "<script>document.querySelector('#paybox_payment_form').submit();</script>";
 
 }
 
